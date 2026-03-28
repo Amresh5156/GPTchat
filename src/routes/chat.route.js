@@ -4,7 +4,8 @@ const { createChat } = require('../controllers/chat.controller');
 
 const router = express.Router();
 
-router.post('/', authUser, createChat )
+/**POST /api/chat */
+router.post('/create', authUser, createChat )
 
 
 module.exports = router

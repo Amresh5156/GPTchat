@@ -1,15 +1,31 @@
 const { GoogleGenAI } = require("@google/genai");
-const { GEMINI_API_KEY } = process.env;
 
-// The client gets the API key from the environment variable `GEMINI_API_KEY`.
-const ai = new GoogleGenAI({});
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
-async function generateContent(message) {
+async function generateResponse(content) {
   const response = await ai.models.generateContent({
     model: "gemini-3-flash-preview",
-    contents: message,
+    contents: content,
   });
-    return response.text;
+  return response.text || response.candidates?.[0]?.content?.parts?.[0]?.text || "";
 }
 
-module.exports = generateContent;
+async function generateVector(text) {
+  const inputText = String(text ?? "").trim();
+
+  if (!inputText) {
+    console.log("⚠️ Empty text for embedding");
+    return null; // important
+  }
+
+  const response = await ai.models.embedContent({
+    model: "gemini-embedding-001",
+    contents: inputText,
+    config: { outputDimensionality: 768 }
+  });
+
+  return response.embeddings[0].values;
+}
+
+
+module.exports = { generateResponse, generateVector};
