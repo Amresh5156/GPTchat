@@ -5,6 +5,8 @@ const userModel = require("../models/user.model")
 const {generateResponse, generateVector} = require("../services/ai.service")
 const messageModel = require("../models/message.model")
 const { createMemory, queryMemory } = require("../services/vector.service")
+const { chat } = require("@pinecone-database/pinecone/dist/assistant/data/chat")
+const { text } = require("express")
 
 
 function initSocketServer(httpServer) {
@@ -40,27 +42,42 @@ function initSocketServer(httpServer) {
 
             try {
                 
+                //createing a message in the database
                 const message = await messageModel.create({
                     chat: messagePayLoad.chat,
                     user: socket.user._id,
                     content: messagePayLoad.content,
                     role: "user"
                 })
-
+                
+                //generating a vector for the message, because we have to maintain the long term memory using vector database 
                 const vectors = await generateVector(messagePayLoad.content)
 
+                //creating a memory for the message vector
                 await createMemory({
                     vector: vectors,
                     messageId: message._id,
                     metadata: {
                         chat: messagePayLoad.chat,
-                        user: socket.user._id
+                        user: socket.user._id,
+                        text: messagePayLoad.content
                     }
                 })
                 console.log("STEP 3: memory stored");
                 
+                //querying the memory for the message if any similar message is found
+                const memory = await queryMemory({
+                    queryVector: vectors,
+                    limit: 5,
+                    metadata: {
+                        chat: messagePayLoad.chat,
+                        user: socket.user._id,
+                    },
+                })
+                console.log(memory);
                 
 
+                //getting the chat history
                 const chatHistory = (await messageModel
                     .find({ chat: messagePayLoad.chat })
                     .sort({ createdAt: -1 })
@@ -68,14 +85,31 @@ function initSocketServer(httpServer) {
                     .lean()).reverse()
                 console.log("STEP 4: history fetched");
 
-                const response = await generateResponse(chatHistory.map(item => {
+                const stm = chatHistory.map(item => {
                     return {
                         role: item.role,
                         parts: [ { text: item.content }]
                     }
-                }))
+                })
+
+                const ltm = [
+                    {
+                        role: "user",
+                        parts: [ {
+                            text: `
+                            these are some previous messages from the chat, use them to generate the response 
+                            ${memory.map(item => item.metadata.text).join("\n")}
+                            `
+                        }]
+                    }
+                ]
+
+                //generating a response for the message, and map all the previous messages
+                const response = await generateResponse([...ltm, ...stm])
                 console.log("AI RESPONSE:", response);
                 
+
+                //creating a message in the database for the response
                 const responseMessage = await messageModel.create({
                     chat: messagePayLoad.chat,
                     user: socket.user._id,
@@ -83,8 +117,10 @@ function initSocketServer(httpServer) {
                     role: "model"
                 })
 
+                //generating a vector for the response
                 const responseVectors = await generateVector(response)
- 
+
+                //creating a memory for the response
                 await createMemory({
                     vector: responseVectors,
                     messageId: responseMessage._id,
@@ -95,6 +131,7 @@ function initSocketServer(httpServer) {
                     }
                 });
 
+                //emitting the response to the client
                 socket.emit("ai-response", {
                     content: response,
                     chat: messagePayLoad.chat

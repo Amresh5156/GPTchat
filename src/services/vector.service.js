@@ -23,12 +23,17 @@ async function createMemory({ vector, metadata, messageId }) {
 }
 
 async function queryMemory({ queryVector, limit = 5, metadata }) {
-  const data = await index.query({
+  const query = {
     vector: queryVector,
     topK: limit,
-    filter: metadata || undefined,
     includeMetadata: true,
-  });
+  };
+  // Pinecone rejects `filter: {}`; omit the key unless there is at least one condition.
+  if (metadata && typeof metadata === "object" && Object.keys(metadata).length > 0) {
+    query.filter = metadata;
+  }
+
+  const data = await index.query(query);
 
   return data.matches;
 }
