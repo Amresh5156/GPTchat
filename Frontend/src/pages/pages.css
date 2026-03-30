@@ -1,0 +1,235 @@
+/* Layout & auth UI — mobile-first, uses tokens from src/styles/theme.css */
+
+.page,
+.auth-page {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-md);
+  transition: var(--transition-theme);
+}
+
+@media (min-width: 480px) {
+  .page,
+  .auth-page {
+    padding: var(--space-lg);
+  }
+}
+
+.page-card,
+.auth-card {
+  width: 100%;
+  max-width: min(100%, 26rem);
+  padding: clamp(var(--space-md), 4vw, var(--space-xl));
+  border-radius: var(--radius-md);
+  background: var(--color-bg-surface);
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-card);
+  transition: var(--transition-theme);
+}
+
+@media (min-width: 640px) {
+  .page-card,
+  .auth-card {
+    max-width: 28rem;
+  }
+}
+
+.auth-card__header {
+  margin-bottom: var(--space-lg);
+}
+
+.auth-card__header .theme-toggle {
+  margin-bottom: var(--space-md);
+}
+
+.page-card h1,
+.auth-card h1 {
+  margin: 0 0 var(--space-xs);
+  font-size: clamp(1.35rem, 4vw, 1.6rem);
+  font-weight: 650;
+  letter-spacing: -0.02em;
+  color: var(--color-text);
+}
+
+.page-card .lead,
+.auth-card .lead {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
+  line-height: 1.55;
+}
+
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.field {
+  margin-bottom: var(--space-md);
+}
+
+.field:last-of-type {
+  margin-bottom: var(--space-sm);
+}
+
+.field label {
+  display: block;
+  margin-bottom: var(--space-xs);
+  font-size: 0.82rem;
+  font-weight: 550;
+  color: var(--color-text);
+}
+
+.field input {
+  width: 100%;
+  min-height: 2.75rem;
+  padding: var(--space-sm) 0.85rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-input);
+  color: var(--color-text);
+  font-size: 1rem;
+  font-family: inherit;
+  transition: var(--transition-theme);
+}
+
+.field input::placeholder {
+  color: var(--color-text-placeholder);
+}
+
+.field input:hover {
+  border-color: var(--color-text-placeholder);
+}
+
+.field input:focus {
+  outline: none;
+  border-color: var(--color-border-focus);
+  box-shadow: var(--shadow-focus);
+}
+
+/* Register: first + last name — stack on narrow screens, row from sm */
+.field-row {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-md);
+  margin-bottom: var(--space-md);
+}
+
+@media (min-width: 480px) {
+  .field-row {
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-md);
+  }
+
+  .field-row .field {
+    margin-bottom: 0;
+  }
+}
+
+.field-row .field {
+  margin-bottom: 0;
+}
+
+.btn-primary {
+  width: 100%;
+  min-height: 2.85rem;
+  margin-top: var(--space-sm);
+  padding: var(--space-sm) var(--space-md);
+  border: none;
+  border-radius: var(--radius-pill);
+  background: var(--color-accent);
+  color: var(--color-on-accent);
+  font-size: 0.95rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.1s ease;
+}
+
+.btn-primary:hover {
+  background: var(--color-accent-hover);
+}
+
+.btn-primary:active {
+  transform: scale(0.99);
+}
+
+.btn-primary:focus-visible {
+  outline: none;
+  box-shadow: var(--shadow-focus);
+}
+
+.nav-links {
+  margin-top: var(--space-lg);
+  font-size: 0.88rem;
+  line-height: 1.6;
+  color: var(--color-text-muted);
+  text-align: center;
+}
+
+.nav-links a {
+  color: var(--color-link);
+  text-decoration: none;
+  font-weight: 550;
+}
+
+.nav-links a:hover {
+  color: var(--color-link-hover);
+  text-decoration: underline;
+}
+
+.home-actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  margin-top: var(--space-lg);
+}
+
+@media (min-width: 400px) {
+  .home-actions {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+}
+
+.home-actions a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.75rem;
+  padding: 0.55rem 1.15rem;
+  border-radius: var(--radius-pill);
+  text-decoration: none;
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-align: center;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.home-actions a.primary {
+  background: var(--color-accent);
+  color: var(--color-on-accent);
+}
+
+.home-actions a.primary:hover {
+  background: var(--color-accent-hover);
+}
+
+.home-actions a.secondary {
+  background: transparent;
+  color: var(--color-link);
+  border: 1px solid var(--color-border);
+}
+
+.home-actions a.secondary:hover {
+  border-color: var(--color-border-focus);
+  color: var(--color-link-hover);
+}
+
+.page-card .theme-toggle {
+  margin-bottom: var(--space-md);
+}
