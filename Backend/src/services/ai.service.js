@@ -6,8 +6,12 @@ async function generateResponse(content) {
   const response = await ai.models.generateContent({
     model: "gemini-3-flash-preview",
     contents: content,
+    config: {
+      temperature: 0.7,
+      systemInstructions: `you are a helpful assistant. use the provided context to answer questions accurately  `
+    }
   });
-  return response.text || response.candidates?.[0]?.content?.parts?.[0]?.text || "";
+  return response.text;
 }
 
 async function generateVector(text) {

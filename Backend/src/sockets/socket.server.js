@@ -9,8 +9,15 @@ const { chat } = require("@pinecone-database/pinecone/dist/assistant/data/chat")
 const { text } = require("express")
 
 
+
 function initSocketServer(httpServer) {
-    const io = new Server(httpServer, {})
+    const io = new Server(httpServer, {
+        cors: {
+            origin: "http://localhost:5173",
+            allowedHeaders: [ "Content-Type", "Authorization" ],
+            credentials: true
+        }
+    })
 
     //middleware to check if the user is login before stablish the connection
     io.use( async (socket, next) => { 
@@ -42,16 +49,19 @@ function initSocketServer(httpServer) {
 
             try {
                 
-                //createing a message in the database
-                const message = await messageModel.create({
-                    chat: messagePayLoad.chat,
-                    user: socket.user._id,
-                    content: messagePayLoad.content,
-                    role: "user"
-                })
-                
-                //generating a vector for the message, because we have to maintain the long term memory using vector database 
-                const vectors = await generateVector(messagePayLoad.content)
+                const [message, vectors] = await Promise.all([
+                    //createing a message in the database
+                    messageModel.create({
+                            chat: messagePayLoad.chat,
+                            user: socket.user._id,
+                            content: messagePayLoad.content,
+                            role: "user"
+                        }),
+                        //generating a vector for the message, because we have to maintain the long term memory using vector database
+                        generateVector(messagePayLoad.content),
+
+                        
+                ])
 
                 //creating a memory for the message vector
                 await createMemory({
@@ -63,27 +73,25 @@ function initSocketServer(httpServer) {
                         text: messagePayLoad.content
                     }
                 })
-                console.log("STEP 3: memory stored");
-                
-                //querying the memory for the message if any similar message is found
-                const memory = await queryMemory({
-                    queryVector: vectors,
-                    limit: 5,
-                    metadata: {
-                        chat: messagePayLoad.chat,
-                        user: socket.user._id,
-                    },
-                })
-                console.log(memory);
-                
 
-                //getting the chat history
-                const chatHistory = (await messageModel
-                    .find({ chat: messagePayLoad.chat })
+
+                const [memory, chatHistory] = await Promise.all([
+                    //querying the memory for the message if any similar message is found
+                    queryMemory({
+                        queryVector: vectors,
+                        limit: 5,
+                        metadata: {
+                            chat: messagePayLoad.chat,
+                            user: socket.user._id,
+                        },
+                    }),
+                    //getting the chat history
+                    messageModel.find({ chat: messagePayLoad.chat })
                     .sort({ createdAt: -1 })
                     .limit(20)
-                    .lean()).reverse()
-                console.log("STEP 4: history fetched");
+                    .lean().then(messages => messages.reverse())
+                ])
+
 
                 const stm = chatHistory.map(item => {
                     return {
@@ -106,21 +114,28 @@ function initSocketServer(httpServer) {
 
                 //generating a response for the message, and map all the previous messages
                 const response = await generateResponse([...ltm, ...stm])
-                console.log("AI RESPONSE:", response);
-                
 
-                //creating a message in the database for the response
-                const responseMessage = await messageModel.create({
-                    chat: messagePayLoad.chat,
-                    user: socket.user._id,
+                //emitting the response to the client
+                socket.emit("ai-response", {
                     content: response,
-                    role: "model"
+                    chat: messagePayLoad.chat
                 })
 
-                //generating a vector for the response
-                const responseVectors = await generateVector(response)
+                const [responseMessage, responseVectors] = await Promise.all([
+                    //Save message in the database for the response
+                    messageModel.create({
+                        chat: messagePayLoad.chat,
+                        user: socket.user._id,
+                        content: response,
+                        role: "model"
+                    }),
 
-                //creating a memory for the response
+                    //generating vector for the response
+                    generateVector(response),
+
+                    //Save AI response in Pinecone vector database
+                ])
+                
                 await createMemory({
                     vector: responseVectors,
                     messageId: responseMessage._id,
@@ -129,14 +144,7 @@ function initSocketServer(httpServer) {
                         user: socket.user._id,
                         text: response
                     }
-                });
-
-                //emitting the response to the client
-                socket.emit("ai-response", {
-                    content: response,
-                    chat: messagePayLoad.chat
                 })
-                console.log("STEP 6: response emitted");
 
             } catch (err) {
                 console.log("[ai-message] failed:", err?.message || err)
